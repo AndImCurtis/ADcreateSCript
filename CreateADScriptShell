@@ -1,0 +1,137 @@
+#The CSV file must be in UTF8 encoding and contain contact data
+#Get-Command New-ADUser -Syntax
+#checks against *domainName* for existing accounts
+
+$ADUsers = Import-csv F:\folderpath\NewAD.csv
+
+foreach ($User in $ADUsers)
+{
+
+       $Username    = $User.username
+       $Password    = $User.password
+       $Firstname   = $User.firstname
+       $Lastname    = $User.lastname
+    $Description = $User.description
+       $OU           = "OU=In Process,OU=Users,OU=USER_SUBFOLDER,DC=domainName,DC=net"
+       $UserPrincipalName = "$Firstname.$LastName@domainName.com"
+
+
+
+       function SpawnAccount {
+      #Check if the user account already exists in AD
+        if (Get-ADUser -F {SamAccountName -eq $Username -or UserPrincipalName -eq $UserPrincipalName}) 
+       {
+
+
+      #If user does exist, output a warning message
+           if (Get-ADUser -F {SamAccountName -eq $Username}) {
+               Write-Warning "A user account $Username already exist in Active Directory."
+               }
+           if (Get-ADUser -F {UserPrincipalName -eq $UserPrincipalName}) { 
+               Write-Warning "A user account $UserPrincipalName already exist in Active Directory."
+               }
+
+
+       }
+       else
+       {
+      #If a user does not exist then create a new user account
+          
+      #Account will be created in the OU listed in the $OU variable in the CSV file
+              New-ADUser `
+            -SamAccountName $Username `
+            -UserPrincipalName $UserPrincipalName `
+            -Name "$Firstname $Lastname" `
+            -GivenName $Firstname `
+            -Surname $Lastname `
+            -Enabled $True `
+            -ChangePasswordAtLogon $True `
+            -DisplayName "$Firstname $Lastname" `
+            -EmailAddress "$Firstname.$Lastname@domainName.com" `
+            -Description $Description `
+            -Path $OU `
+            -AccountPassword (convertto-securestring $Password -AsPlainText -Force) `
+            -OtherAttribute @{
+            'proxyAddresses'="SMTP:$Firstname.$Lastname@domainName.com"
+               'mailNickname'="$Firstname.$Lastname"}
+      #Space between each OtherAttribute
+      
+
+
+      #Members Of by Description
+
+      #Secretary Groups
+      if ($Description -ceq 'Secretary GROUP A User' -or $Description -ceq 'Secretary GROUP B User' -or $Description -ceq 'Secretary GROUP C User')
+        { 
+            Add-ADGroupMember -Identity 'example group 1'  -Members $username
+            Add-ADGroupMember -Identity 'example group 2'  -Members $username
+            Add-ADGroupMember -Identity 'example group 3'  -Members $username
+            Add-ADGroupMember -Identity 'example group 4'  -Members $username
+        }
+      #Admin Groups 
+      if ($Description -ceq 'Admin Group')
+        {
+            Add-ADGroupMember -Identity 'example group 1'  -Members $username
+            Add-ADGroupMember -Identity 'example group 2'  -Members $username
+            Add-ADGroupMember -Identity 'example group 3'  -Members $username
+            Add-ADGroupMember -Identity 'example group 4'  -Members $username
+            Add-ADGroupMember -Identity 'example group 5'  -Members $username
+            Add-ADGroupMember -Identity 'example group 6'  -Members $username
+            Add-ADGroupMember -Identity 'example group 7'  -Members $username
+            Add-ADGroupMember -Identity 'example group 8'  -Members $username
+        }
+
+       #Clerk Groups
+      if ($Description -ceq 'Clerk Group')
+        {
+            Add-ADGroupMember -Identity 'example group 1'  -Members $username
+            Add-ADGroupMember -Identity 'example group 2'  -Members $username
+            Add-ADGroupMember -Identity 'example group 7'  -Members $username
+            Add-ADGroupMember -Identity 'example group 48'  -Members $username
+            
+        }
+
+      
+       
+
+        #Intern Group 
+      if ($Description -ceq 'Intern Group')
+        {
+            Add-ADGroupMember -Identity 'example group 17'  -Members $username
+            Add-ADGroupMember -Identity 'example group 18'  -Members $username
+            Add-ADGroupMember -Identity 'example group 32'  -Members $username
+            
+        }
+
+
+
+
+            Get-ADUser $Username
+      
+
+
+        }
+
+      
+        }
+        
+              #Check for archieved Usernames... erase if user accounts are not archieved
+         if ((Test-Path -Path "\\IfUserAccountsAreAchieved\*\*\$Username") -eq $true) {
+       
+              Write-Warning "An archieved user with this username exists. Would you like to create anyways? yes or no"
+                $a = Read-Host
+                if ($a -eq 'yes') {
+                    SpawnAccount
+                    }
+                if($a -ne 'yes') {
+                    Write-Warning "Goodbye!"
+                    Break ADCreate
+                    
+                }
+    
+           }else {
+                SpawnAccount
+                        }
+       
+       
+}
